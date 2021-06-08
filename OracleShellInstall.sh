@@ -77,6 +77,8 @@ DNS=N
 DNSSERVER=N
 DNSNAME=
 DNSIP=
+MOUNTISO=N
+export LANG=C
 ###################################################################################
 ##The following is a custom function：
 ####################################################################################
@@ -292,6 +294,7 @@ help() {
   c1 "-ocd,		--ONLYCREATEDB		        ONLY CREATE DATABASE(Y|N)" green
   c1 "-gpa,		--GRID RELEASE UPDATE		GRID RELEASE UPDATE(32072711)" green
   c1 "-opa,		--ORACLE RELEASE UPDATE		ORACLE RELEASE UPDATE(32072711)" green
+  c1 "-mt,  --MOUNTISO                  MOUNT LOCAL ISO FILE" green
   exit 0
 }
 
@@ -811,37 +814,42 @@ InstallRPM() {
   ####################################################################################
   # Judge ISO file mount status
   ####################################################################################
-  mountPatch=$(mount | grep -E "iso|ISO" | awk '{print $3}')
-  if [ ! "${mountPatch}" ]; then
-    echo
-    c1 "The ISO file is not mounted on system." red
-    exit 99
-  else
-    if [ ! -f /etc/yum.repos.d/local.repo ]; then
-      if [ "${OS_VERSION}" = "linux6" ] || [ "${OS_VERSION}" = "linux7" ]; then
-        {
-          echo "[server]"
-          echo "name=server"
-          echo "baseurl=file://""${mountPatch}"
-          echo "enabled=1"
-          echo "gpgcheck=1"
-        } >/etc/yum.repos.d/local.repo
-      elif [ "${OS_VERSION}" = "linux8" ]; then
-        {
-          echo "[BaseOS]"
-          echo "name=BaseOS"
-          echo "baseurl=file:///${mountPatch}/BaseOS"
-          echo "enabled=1"
-          echo "gpgcheck=1"
-          echo "[AppStream]"
-          echo "name=AppStream"
-          echo "baseurl=file:///${mountPatch}/AppStream"
-          echo "enabled=1"
-          echo "gpgcheck=1"
-        } >/etc/yum.repos.d/local.repo
+  if [ ${MOUNTISO} == "Y" ]; then
+    mountPatch=$(mount | grep -E "iso|ISO" | awk '{print $3}')
+    if [ ! "${mountPatch}" ]; then
+      echo
+      c1 "The ISO file is not mounted on system." red
+      exit 99
+    else
+      if [ ! -f /etc/yum.repos.d/local.repo ]; then
+        if [ "${OS_VERSION}" = "linux6" ] || [ "${OS_VERSION}" = "linux7" ]; then
+          {
+            echo "[server]"
+            echo "name=server"
+            echo "baseurl=file://""${mountPatch}"
+            echo "enabled=1"
+            echo "gpgcheck=1"
+          } >/etc/yum.repos.d/local.repo
+        elif [ "${OS_VERSION}" = "linux8" ]; then
+          {
+            echo "[BaseOS]"
+            echo "name=BaseOS"
+            echo "baseurl=file:///${mountPatch}/BaseOS"
+            echo "enabled=1"
+            echo "gpgcheck=1"
+            echo "[AppStream]"
+            echo "name=AppStream"
+            echo "baseurl=file:///${mountPatch}/AppStream"
+            echo "enabled=1"
+            echo "gpgcheck=1"
+          } >/etc/yum.repos.d/local.repo
+        fi
+        rpm --import "${mountPatch}"/RPM-GPG-KEY-redhat-release
       fi
-      rpm --import "${mountPatch}"/RPM-GPG-KEY-redhat-release
     fi
+  fi
+    yum install -y unzip
+    
     if [ "${OS_VERSION}" = "linux6" ]; then
       if [ "${TuXingHua}" = "y" ] || [ "${TuXingHua}" = "Y" ]; then
         #LINUX 6
@@ -939,7 +947,6 @@ InstallRPM() {
       fi
     fi
 
-  fi
   ## yum install -y openssh
   if [ "$nodeNum" -eq 1 ]; then
     if [ "${OracleInstallMode}" = "rac" ] || [ "${OracleInstallMode}" = "RAC" ]; then
@@ -2234,9 +2241,11 @@ EOF
 # Install rlwrap
 ####################################################################################
 InstallRlwrap() {
+yum install -y rlwrap;rpm -q rlwrap
+if [ "$?" -ne 0 ]; then
   if [ "$(find "${SOFTWAREDIR}" -maxdepth 1 -name 'rlwrap-*.gz' | wc -l)" -gt 0 ]; then
     if ! rlwrap -v >/dev/null 2>&1; then
-      yum install -y tar
+      yum install -y tar 
       mkdir "${SOFTWAREDIR}"/rlwrap
       tar -zxvf "${SOFTWAREDIR}"/rlwrap*tar.gz --strip-components 1 -C "${SOFTWAREDIR}"/rlwrap
       cd "${SOFTWAREDIR}"/rlwrap || return
@@ -2248,7 +2257,7 @@ InstallRlwrap() {
       rm -rf "${SOFTWAREDIR}/"rlwrap*
     fi
   fi
-
+fi
 }
 
 ####################################################################################
@@ -3312,7 +3321,7 @@ UnzipDBSoft() {
       rm -rf "${SOFTWAREDIR}"/database
     fi
     if unzip -o "${SOFTWAREDIR}"/p13390677_112040_Linux-x86-64_1of7.zip -d "${SOFTWAREDIR}"; then
-      rm -rf "${SOFTWAREDIR}"/p13390677_112040_Linux-x86-64_1of7.zip
+    #   rm -rf "${SOFTWAREDIR}"/p13390677_112040_Linux-x86-64_1of7.zip
       chown -R oracle:oinstall "${SOFTWAREDIR}"/database
     else
       c1 "Make sure the database installation package is in the ${SOFTWAREDIR} directory:" red
@@ -3321,7 +3330,7 @@ UnzipDBSoft() {
     fi
 
     if unzip -o "${SOFTWAREDIR}"/p13390677_112040_Linux-x86-64_2of7.zip -d "${SOFTWAREDIR}"; then
-      rm -rf "${SOFTWAREDIR}"/p13390677_112040_Linux-x86-64_2of7.zip
+    #   rm -rf "${SOFTWAREDIR}"/p13390677_112040_Linux-x86-64_2of7.zip
       chown -R oracle:oinstall "${SOFTWAREDIR}"/database
     else
       c1 "Make sure the database installation package is in the ${SOFTWAREDIR} directory:" red
@@ -3334,7 +3343,7 @@ UnzipDBSoft() {
       rm -rf "${SOFTWAREDIR}"/database
     fi
     if unzip -o "${SOFTWAREDIR}"/LINUX.X64_122010_db_home.zip -d "${SOFTWAREDIR}"; then
-      rm -rf "${SOFTWAREDIR}"/LINUX.X64_122010_db_home.zip
+    #  rm -rf "${SOFTWAREDIR}"/LINUX.X64_122010_db_home.zip
       chown -R oracle:oinstall "${SOFTWAREDIR}"/database
     else
       c1 "Make sure the database installation package is in the ${SOFTWAREDIR} directory:" red
@@ -3347,7 +3356,7 @@ UnzipDBSoft() {
       rm -rf "${ENV_ORACLE_HOME}"
     fi
     if unzip -o "${SOFTWAREDIR}"/LINUX.X64_180000_db_home.zip -d "${ENV_ORACLE_HOME}"; then
-      rm -rf "${SOFTWAREDIR}"/LINUX.X64_180000_db_home.zip
+    #  rm -rf "${SOFTWAREDIR}"/LINUX.X64_180000_db_home.zip
       chown -R oracle:oinstall "${ENV_ORACLE_HOME}"
     else
       c1 "Make sure the database installation package is in the ${SOFTWAREDIR} directory:" red
@@ -3360,7 +3369,7 @@ UnzipDBSoft() {
       rm -rf "${ENV_ORACLE_HOME}"
     fi
     if unzip -o "${SOFTWAREDIR}"/LINUX.X64_193000_db_home.zip -d "${ENV_ORACLE_HOME}"; then
-      rm -rf "${SOFTWAREDIR}"/LINUX.X64_193000_db_home.zip
+    #  rm -rf "${SOFTWAREDIR}"/LINUX.X64_193000_db_home.zip
       chown -R oracle:oinstall "${ENV_ORACLE_HOME}"
     else
       c1 "Make sure the database installation package is in the ${SOFTWAREDIR} directory:" red
