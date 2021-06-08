@@ -485,6 +485,10 @@ while [ -n "$1" ]; do #Here by judging whether $1 exists
     DNSIP=$2
     shift 2
     ;;
+  -mt | --MOUNTISO)
+    MOUNTISO=$2
+    shift 2
+    ;;
   -h | --help) help ;; # function help is called
   --)
     shift
